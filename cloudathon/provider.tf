@@ -5,7 +5,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0" # Use a recent version; adjust as needed
+      version = "6.24.0"
     }
   }
 }
