@@ -1,8 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket  = "cloudathon-vdc"
-    prefix  = "terraform/state"
+    bucket = "cloudathon-vdc"
+    prefix = "terraform/state"
   }
 }
-
-
