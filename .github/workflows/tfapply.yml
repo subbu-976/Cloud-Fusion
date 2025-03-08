@@ -1,9 +1,9 @@
-name: Terraform Plan
+name: Terraform Apply
 
 on:
   push:
     branches:
-      - venkat-cloudathon-terraform-workflow
+      - main
     paths:
       - 'cloudathon/**'
 
@@ -53,4 +53,9 @@ jobs:
         run: terraform plan -out=tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
+            
+      # Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
