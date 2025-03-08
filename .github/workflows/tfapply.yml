@@ -8,8 +8,8 @@ on:
       - 'cloudathon/**'
 
 jobs:
-  terraform-plan:
-    name: Terraform Plan
+  terraform-apply:
+    name: Terraform Apply
     runs-on: ubuntu-latest
     
     defaults:
