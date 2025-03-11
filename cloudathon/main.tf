@@ -2,13 +2,13 @@
 
 # Active GKE Cluster in asia-south2
 resource "google_container_cluster" "active_cluster" {
-  provider = google.asia-south2
-  name     = "active-gke-cluster"
-  location = "asia-south2-a"
+  provider                 = google.asia-south2
+  name                     = "active-gke-cluster"
+  location                 = "asia-south2-a"
   remove_default_node_pool = true
   initial_node_count       = 1
-  network    = "default"
-  subnetwork = "default"
+  network                  = "default"
+  subnetwork               = "default"
 }
 
 resource "google_container_node_pool" "active_nodes" {
@@ -26,13 +26,13 @@ resource "google_container_node_pool" "active_nodes" {
 
 # Passive GKE Cluster in asia-south1
 resource "google_container_cluster" "passive_cluster" {
-  provider = google.asia-south1
-  name     = "passive-gke-cluster"
-  location = "asia-south1-a"
+  provider                 = google.asia-south1
+  name                     = "passive-gke-cluster"
+  location                 = "asia-south1-a"
   remove_default_node_pool = true
   initial_node_count       = 1
-  network    = "default"
-  subnetwork = "default"
+  network                  = "default"
+  subnetwork               = "default"
 }
 
 resource "google_container_node_pool" "passive_nodes" {
@@ -56,38 +56,38 @@ resource "google_sql_database_instance" "postgres_primary" {
   database_version = "POSTGRES_15"
 
   settings {
-    tier = "db-custom-2-7680"
+    tier              = "db-custom-2-7680"
     availability_type = "REGIONAL"
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "0.0.0.0/0"  # Restrict to VPC in production
+        value = "0.0.0.0/0" # Restrict to VPC in production
       }
     }
     backup_configuration {
       enabled            = true
-      binary_log_enabled = true  # Required for replication
+      binary_log_enabled = true # Required for replication
     }
   }
 }
 
 # Cloud SQL PostgreSQL Read Replica in asia-south1
 resource "google_sql_database_instance" "postgres_replica" {
-  provider            = google.asia-south1
-  name                = "postgres-replica"
-  region              = "asia-south1"
-  database_version    = "POSTGRES_15"
+  provider             = google.asia-south1
+  name                 = "postgres-replica"
+  region               = "asia-south1"
+  database_version     = "POSTGRES_15"
   master_instance_name = google_sql_database_instance.postgres_primary.name
 
   settings {
-    tier = "db-custom-2-7680"
+    tier              = "db-custom-2-7680"
     availability_type = "REGIONAL"
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "0.0.0.0/0"  # Restrict to VPC in production
+        value = "0.0.0.0/0" # Restrict to VPC in production
       }
     }
   }
@@ -106,7 +106,7 @@ resource "google_sql_user" "app_user" {
   provider = google.asia-south2
   name     = "app-user"
   instance = google_sql_database_instance.postgres_primary.name
-  password = "your-secure-password"  # Replace with a secure password
+  password = "your-secure-password" # Replace with a secure password
 }
 
 # Global Load Balancer for GKE Failover
