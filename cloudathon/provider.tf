@@ -1,18 +1,24 @@
 # cloudathon/provider.tf
 
-# Define required providers and their versions
 terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "6.24.0"
+      version = "~> 5.0"
     }
   }
 }
 
-# Configure the Google provider
+# Provider for asia-south2 region (active)
 provider "google" {
-  project = "cloudathon-453114" # Replace with your GCP project ID
-  region  = "asia-south2-a"     # Replace with your desired region
-  # Credentials will be picked up from GOOGLE_CREDENTIALS env var in GitHub Actions
+  alias   = "asia-south2"
+  project = "cloudathon-453114"
+  region  = "asia-south2"
+}
+
+# Provider for asia-south1 region (passive)
+provider "google" {
+  alias   = "asia-south1"
+  project = "cloudathon-453114"
+  region  = "asia-south1"
 }
