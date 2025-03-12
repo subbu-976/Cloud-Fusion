@@ -9,6 +9,7 @@ resource "google_container_cluster" "active_cluster" {
   initial_node_count       = 1
   network                  = "default"
   subnetwork               = "default"
+  deletion_protection      = false
 }
 
 resource "google_container_node_pool" "active_nodes" {
@@ -34,6 +35,7 @@ resource "google_container_cluster" "passive_cluster" {
   initial_node_count       = 1
   network                  = "default"
   subnetwork               = "default"
+  deletion_protection      = false
 }
 
 resource "google_container_node_pool" "passive_nodes" {
@@ -56,6 +58,7 @@ resource "google_sql_database_instance" "postgres_primary" {
   name             = "postgres-primary"
   region           = "asia-south2"
   database_version = "POSTGRES_15"
+  deletion_protection      = false
   settings {
     tier              = "db-custom-2-7680"
     availability_type = "REGIONAL"
@@ -79,6 +82,7 @@ resource "google_sql_database_instance" "postgres_replica" {
   name                 = "postgres-replica"
   region               = "asia-south1"
   database_version     = "POSTGRES_15"
+  deletion_protection      = false
   master_instance_name = google_sql_database_instance.postgres_primary.name
   settings {
     tier              = "db-custom-2-7680"
