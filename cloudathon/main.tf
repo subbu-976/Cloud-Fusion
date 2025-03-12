@@ -22,7 +22,7 @@ resource "google_container_node_pool" "active_nodes" {
     disk_size_gb = 50
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
-  depends_on = [google_container_cluster.active_cluster]  # Node pool depends on cluster
+  depends_on = [google_container_cluster.active_cluster] # Node pool depends on cluster
 }
 
 # Passive GKE Cluster in asia-south1
@@ -47,7 +47,7 @@ resource "google_container_node_pool" "passive_nodes" {
     disk_size_gb = 50
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
-  depends_on = [google_container_cluster.passive_cluster]  # Node pool depends on cluster
+  depends_on = [google_container_cluster.passive_cluster] # Node pool depends on cluster
 }
 
 # Cloud SQL PostgreSQL Primary Instance in asia-south2
@@ -91,23 +91,23 @@ resource "google_sql_database_instance" "postgres_replica" {
       }
     }
   }
-  depends_on = [google_sql_database_instance.postgres_primary]  # Replica depends on primary
+  depends_on = [google_sql_database_instance.postgres_primary] # Replica depends on primary
 }
 
 # Database and User
 resource "google_sql_database" "app_db" {
-  provider = google.asia-south2
-  name     = "app-database"
-  instance = google_sql_database_instance.postgres_primary.name
-  depends_on = [google_sql_database_instance.postgres_primary]  # DB depends on primary instance
+  provider   = google.asia-south2
+  name       = "app-database"
+  instance   = google_sql_database_instance.postgres_primary.name
+  depends_on = [google_sql_database_instance.postgres_primary] # DB depends on primary instance
 }
 
 resource "google_sql_user" "app_user" {
-  provider = google.asia-south2
-  name     = "app-user"
-  instance = google_sql_database_instance.postgres_primary.name
-  password = "your-secure-password" # Replace with a secure password
-  depends_on = [google_sql_database_instance.postgres_primary]  # User depends on primary instance
+  provider   = google.asia-south2
+  name       = "app-user"
+  instance   = google_sql_database_instance.postgres_primary.name
+  password   = "your-secure-password"                          # Replace with a secure password
+  depends_on = [google_sql_database_instance.postgres_primary] # User depends on primary instance
 }
 
 # Hello World Application Deployment on Active Cluster
@@ -154,8 +154,8 @@ resource "kubernetes_deployment" "hello_world_active" {
     }
   }
   depends_on = [
-    google_container_node_pool.active_nodes,  # Deployment depends on nodes being ready
-    kubernetes_config_map.hello_world_config  # Depends on ConfigMap
+    google_container_node_pool.active_nodes, # Deployment depends on nodes being ready
+    kubernetes_config_map.hello_world_config # Depends on ConfigMap
   ]
 }
 
@@ -174,7 +174,7 @@ resource "kubernetes_service" "hello_world_service_active" {
     }
     type = "NodePort"
   }
-  depends_on = [kubernetes_deployment.hello_world_active]  # Service depends on deployment
+  depends_on = [kubernetes_deployment.hello_world_active] # Service depends on deployment
 }
 
 # Hello World Application Deployment on Passive Cluster
@@ -221,8 +221,8 @@ resource "kubernetes_deployment" "hello_world_passive" {
     }
   }
   depends_on = [
-    google_container_node_pool.passive_nodes,  # Deployment depends on nodes being ready
-    kubernetes_config_map.hello_world_config   # Depends on ConfigMap
+    google_container_node_pool.passive_nodes, # Deployment depends on nodes being ready
+    kubernetes_config_map.hello_world_config  # Depends on ConfigMap
   ]
 }
 
@@ -241,7 +241,7 @@ resource "kubernetes_service" "hello_world_service_passive" {
     }
     type = "NodePort"
   }
-  depends_on = [kubernetes_deployment.hello_world_passive]  # Service depends on deployment
+  depends_on = [kubernetes_deployment.hello_world_passive] # Service depends on deployment
 }
 
 # NGINX ConfigMap for Hello World and Health Check
@@ -268,7 +268,7 @@ server {
 }
 EOF
   }
-  depends_on = [google_container_cluster.active_cluster]  # ConfigMap depends on cluster availability
+  depends_on = [google_container_cluster.active_cluster] # ConfigMap depends on cluster availability
 }
 
 # Global Load Balancer for GKE Failover
@@ -303,9 +303,9 @@ resource "google_compute_backend_service" "gke_backend" {
   }
   health_checks = [google_compute_health_check.gke_health_check.id]
   depends_on = [
-    google_container_node_pool.active_nodes,  # Backend depends on node pools
+    google_container_node_pool.active_nodes, # Backend depends on node pools
     google_container_node_pool.passive_nodes,
-    google_compute_health_check.gke_health_check  # Depends on health check
+    google_compute_health_check.gke_health_check # Depends on health check
   ]
 }
 
@@ -313,14 +313,14 @@ resource "google_compute_url_map" "gke_url_map" {
   provider        = google.asia-south2
   name            = "gke-url-map"
   default_service = google_compute_backend_service.gke_backend.id
-  depends_on = [google_compute_backend_service.gke_backend]  # URL map depends on backend service
+  depends_on      = [google_compute_backend_service.gke_backend] # URL map depends on backend service
 }
 
 resource "google_compute_target_http_proxy" "gke_proxy" {
-  provider = google.asia-south2
-  name     = "gke-http-proxy"
-  url_map  = google_compute_url_map.gke_url_map.id
-  depends_on = [google_compute_url_map.gke_url_map]  # Proxy depends on URL map
+  provider   = google.asia-south2
+  name       = "gke-http-proxy"
+  url_map    = google_compute_url_map.gke_url_map.id
+  depends_on = [google_compute_url_map.gke_url_map] # Proxy depends on URL map
 }
 
 resource "google_compute_global_forwarding_rule" "gke_forwarding_rule" {
@@ -330,7 +330,7 @@ resource "google_compute_global_forwarding_rule" "gke_forwarding_rule" {
   port_range = "80"
   ip_address = google_compute_global_address.global_ip.address
   depends_on = [
-    google_compute_target_http_proxy.gke_proxy,  # Forwarding rule depends on proxy
-    google_compute_global_address.global_ip      # Depends on IP allocation
+    google_compute_target_http_proxy.gke_proxy, # Forwarding rule depends on proxy
+    google_compute_global_address.global_ip     # Depends on IP allocation
   ]
 }
