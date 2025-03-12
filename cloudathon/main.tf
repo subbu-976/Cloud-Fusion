@@ -22,7 +22,7 @@ resource "google_container_node_pool" "active_nodes" {
     disk_size_gb = 50
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
-  depends_on = [google_container_cluster.active_cluster] # Node pool depends on cluster
+  depends_on = [google_container_cluster.active_cluster]
 }
 
 # Passive GKE Cluster in asia-south1
@@ -47,7 +47,7 @@ resource "google_container_node_pool" "passive_nodes" {
     disk_size_gb = 50
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
   }
-  depends_on = [google_container_cluster.passive_cluster] # Node pool depends on cluster
+  depends_on = [google_container_cluster.passive_cluster]
 }
 
 # Cloud SQL PostgreSQL Primary Instance in asia-south2
@@ -67,8 +67,8 @@ resource "google_sql_database_instance" "postgres_primary" {
       }
     }
     backup_configuration {
-      enabled            = true
-      binary_log_enabled = true
+      enabled = true
+      # Removed binary_log_enabled as it’s not applicable to PostgreSQL
     }
   }
 }
@@ -91,7 +91,7 @@ resource "google_sql_database_instance" "postgres_replica" {
       }
     }
   }
-  depends_on = [google_sql_database_instance.postgres_primary] # Replica depends on primary
+  depends_on = [google_sql_database_instance.postgres_primary]
 }
 
 # Database and User
@@ -99,18 +99,72 @@ resource "google_sql_database" "app_db" {
   provider   = google.asia-south2
   name       = "app-database"
   instance   = google_sql_database_instance.postgres_primary.name
-  depends_on = [google_sql_database_instance.postgres_primary] # DB depends on primary instance
+  depends_on = [google_sql_database_instance.postgres_primary]
 }
 
 resource "google_sql_user" "app_user" {
   provider   = google.asia-south2
   name       = "app-user"
   instance   = google_sql_database_instance.postgres_primary.name
-  password   = "your-secure-password"                          # Replace with a secure password
-  depends_on = [google_sql_database_instance.postgres_primary] # User depends on primary instance
+  password   = "your-secure-password" # Replace with a secure password
+  depends_on = [google_sql_database_instance.postgres_primary]
 }
 
-# Hello World Application Deployment on Active Cluster
+# NGINX ConfigMap for Active Cluster (asia-south2)
+resource "kubernetes_config_map" "hello_world_config_active" {
+  provider = kubernetes.asia-south2
+  metadata {
+    name = "hello-world-config"
+  }
+  data = {
+    "default.conf" = <<EOF
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        return 200 "Hello, World!";
+        add_header Content-Type text/plain;
+    }
+
+    location /healthz {
+        return 200 "OK";
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+  }
+  depends_on = [google_container_cluster.active_cluster]
+}
+
+# NGINX ConfigMap for Passive Cluster (asia-south1)
+resource "kubernetes_config_map" "hello_world_config_passive" {
+  provider = kubernetes.asia-south1
+  metadata {
+    name = "hello-world-config"
+  }
+  data = {
+    "default.conf" = <<EOF
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        return 200 "Hello, World!";
+        add_header Content-Type text/plain;
+    }
+
+    location /healthz {
+        return 200 "OK";
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+  }
+  depends_on = [google_container_cluster.passive_cluster]
+}
+
+# Hello World Deployment on Active Cluster
 resource "kubernetes_deployment" "hello_world_active" {
   provider = kubernetes.asia-south2
   metadata {
@@ -147,16 +201,19 @@ resource "kubernetes_deployment" "hello_world_active" {
         volume {
           name = "nginx-config"
           config_map {
-            name = kubernetes_config_map.hello_world_config.metadata[0].name
+            name = kubernetes_config_map.hello_world_config_active.metadata[0].name
           }
         }
       }
     }
   }
   depends_on = [
-    google_container_node_pool.active_nodes, # Deployment depends on nodes being ready
-    kubernetes_config_map.hello_world_config # Depends on ConfigMap
+    google_container_node_pool.active_nodes,
+    kubernetes_config_map.hello_world_config_active
   ]
+  timeouts {
+    create = "10m" # Increased timeout to handle rollout
+  }
 }
 
 resource "kubernetes_service" "hello_world_service_active" {
@@ -174,10 +231,10 @@ resource "kubernetes_service" "hello_world_service_active" {
     }
     type = "NodePort"
   }
-  depends_on = [kubernetes_deployment.hello_world_active] # Service depends on deployment
+  depends_on = [kubernetes_deployment.hello_world_active]
 }
 
-# Hello World Application Deployment on Passive Cluster
+# Hello World Deployment on Passive Cluster
 resource "kubernetes_deployment" "hello_world_passive" {
   provider = kubernetes.asia-south1
   metadata {
@@ -214,16 +271,19 @@ resource "kubernetes_deployment" "hello_world_passive" {
         volume {
           name = "nginx-config"
           config_map {
-            name = kubernetes_config_map.hello_world_config.metadata[0].name
+            name = kubernetes_config_map.hello_world_config_passive.metadata[0].name
           }
         }
       }
     }
   }
   depends_on = [
-    google_container_node_pool.passive_nodes, # Deployment depends on nodes being ready
-    kubernetes_config_map.hello_world_config  # Depends on ConfigMap
+    google_container_node_pool.passive_nodes,
+    kubernetes_config_map.hello_world_config_passive
   ]
+  timeouts {
+    create = "10m" # Increased timeout to handle rollout
+  }
 }
 
 resource "kubernetes_service" "hello_world_service_passive" {
@@ -241,34 +301,7 @@ resource "kubernetes_service" "hello_world_service_passive" {
     }
     type = "NodePort"
   }
-  depends_on = [kubernetes_deployment.hello_world_passive] # Service depends on deployment
-}
-
-# NGINX ConfigMap for Hello World and Health Check
-resource "kubernetes_config_map" "hello_world_config" {
-  provider = kubernetes.asia-south2
-  metadata {
-    name = "hello-world-config"
-  }
-  data = {
-    "default.conf" = <<EOF
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        return 200 "Hello, World!";
-        add_header Content-Type text/plain;
-    }
-
-    location /healthz {
-        return 200 "OK";
-        add_header Content-Type text/plain;
-    }
-}
-EOF
-  }
-  depends_on = [google_container_cluster.active_cluster] # ConfigMap depends on cluster availability
+  depends_on = [kubernetes_deployment.hello_world_passive]
 }
 
 # Global Load Balancer for GKE Failover
@@ -303,9 +336,9 @@ resource "google_compute_backend_service" "gke_backend" {
   }
   health_checks = [google_compute_health_check.gke_health_check.id]
   depends_on = [
-    google_container_node_pool.active_nodes, # Backend depends on node pools
+    google_container_node_pool.active_nodes,
     google_container_node_pool.passive_nodes,
-    google_compute_health_check.gke_health_check # Depends on health check
+    google_compute_health_check.gke_health_check
   ]
 }
 
@@ -313,14 +346,14 @@ resource "google_compute_url_map" "gke_url_map" {
   provider        = google.asia-south2
   name            = "gke-url-map"
   default_service = google_compute_backend_service.gke_backend.id
-  depends_on      = [google_compute_backend_service.gke_backend] # URL map depends on backend service
+  depends_on      = [google_compute_backend_service.gke_backend]
 }
 
 resource "google_compute_target_http_proxy" "gke_proxy" {
   provider   = google.asia-south2
   name       = "gke-http-proxy"
   url_map    = google_compute_url_map.gke_url_map.id
-  depends_on = [google_compute_url_map.gke_url_map] # Proxy depends on URL map
+  depends_on = [google_compute_url_map.gke_url_map]
 }
 
 resource "google_compute_global_forwarding_rule" "gke_forwarding_rule" {
@@ -330,7 +363,7 @@ resource "google_compute_global_forwarding_rule" "gke_forwarding_rule" {
   port_range = "80"
   ip_address = google_compute_global_address.global_ip.address
   depends_on = [
-    google_compute_target_http_proxy.gke_proxy, # Forwarding rule depends on proxy
-    google_compute_global_address.global_ip     # Depends on IP allocation
+    google_compute_target_http_proxy.gke_proxy,
+    google_compute_global_address.global_ip
   ]
 }
