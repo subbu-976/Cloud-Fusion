@@ -54,11 +54,11 @@ resource "google_container_node_pool" "passive_nodes" {
 
 # Cloud SQL PostgreSQL Primary Instance in asia-south2
 resource "google_sql_database_instance" "postgres_primary" {
-  provider         = google.asia-south2
-  name             = "postgres-primary"
-  region           = "asia-south2"
-  database_version = "POSTGRES_15"
-  deletion_protection      = false
+  provider            = google.asia-south2
+  name                = "postgres-primary"
+  region              = "asia-south2"
+  database_version    = "POSTGRES_15"
+  deletion_protection = false
   settings {
     tier              = "db-custom-2-7680"
     availability_type = "REGIONAL"
@@ -82,7 +82,7 @@ resource "google_sql_database_instance" "postgres_replica" {
   name                 = "postgres-replica"
   region               = "asia-south1"
   database_version     = "POSTGRES_15"
-  deletion_protection      = false
+  deletion_protection  = false
   master_instance_name = google_sql_database_instance.postgres_primary.name
   settings {
     tier              = "db-custom-2-7680"
