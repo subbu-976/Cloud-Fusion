@@ -96,17 +96,17 @@ resource "google_sql_database_instance" "postgres_replica" {
 
 # Database and User
 resource "google_sql_database" "app_db" {
-  provider = google.asia-south2
-  name     = "app-database"
-  instance = google_sql_database_instance.postgres_primary.name
+  provider   = google.asia-south2
+  name       = "app-database"
+  instance   = google_sql_database_instance.postgres_primary.name
   depends_on = [google_sql_database_instance.postgres_primary]
 }
 
 resource "google_sql_user" "app_user" {
-  provider = google.asia-south2
-  name     = "app-user"
-  instance = google_sql_database_instance.postgres_primary.name
-  password = "your-secure-password" # Replace with a secure password
+  provider   = google.asia-south2
+  name       = "app-user"
+  instance   = google_sql_database_instance.postgres_primary.name
+  password   = "your-secure-password" # Replace with a secure password
   depends_on = [google_sql_database_instance.postgres_primary]
 }
 
@@ -212,7 +212,7 @@ resource "kubernetes_deployment" "hello_world_active" {
     kubernetes_config_map.hello_world_config_active
   ]
   timeouts {
-    create = "10m"  # Increased timeout to handle rollout
+    create = "10m" # Increased timeout to handle rollout
   }
 }
 
@@ -282,7 +282,7 @@ resource "kubernetes_deployment" "hello_world_passive" {
     kubernetes_config_map.hello_world_config_passive
   ]
   timeouts {
-    create = "10m"  # Increased timeout to handle rollout
+    create = "10m" # Increased timeout to handle rollout
   }
 }
 
@@ -346,13 +346,13 @@ resource "google_compute_url_map" "gke_url_map" {
   provider        = google.asia-south2
   name            = "gke-url-map"
   default_service = google_compute_backend_service.gke_backend.id
-  depends_on = [google_compute_backend_service.gke_backend]
+  depends_on      = [google_compute_backend_service.gke_backend]
 }
 
 resource "google_compute_target_http_proxy" "gke_proxy" {
-  provider = google.asia-south2
-  name     = "gke-http-proxy"
-  url_map  = google_compute_url_map.gke_url_map.id
+  provider   = google.asia-south2
+  name       = "gke-http-proxy"
+  url_map    = google_compute_url_map.gke_url_map.id
   depends_on = [google_compute_url_map.gke_url_map]
 }
 
