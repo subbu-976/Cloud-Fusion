@@ -60,8 +60,8 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      # Terraform Destroy
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      # # Terraform Destroy
+      # - name: Terraform Destroy
+      #   run: terraform destroy -auto-approve
+      #   env:
+      #     GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
