@@ -25,7 +25,7 @@ resource "google_container_node_pool" "active_nodes" {
   depends_on = [google_container_cluster.active_cluster]
 }
 
-# Passive GKE Cluster in asia-south1
+# Passive GKE Cluster in asia-south1 
 resource "google_container_cluster" "passive_cluster" {
   provider                 = google.asia-south1
   name                     = "passive-gke-cluster"
