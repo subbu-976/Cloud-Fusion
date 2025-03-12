@@ -48,21 +48,21 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      # Generate Terraform Plan
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-          
-      # Terraform Apply
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-      
-      # # Terraform Destroy
-      # - name: Terraform Destroy
-      #   run: terraform destroy -auto-approve
+      # # Generate Terraform Plan
+      # - name: Terraform Plan
+      #   run: terraform plan -out=tfplan
       #   env:
       #     GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          
+      # # Terraform Apply
+      # - name: Terraform Apply
+      #   run: terraform apply -auto-approve tfplan
+      #   env:
+      #     GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      
+      # Terraform Destroy
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       
