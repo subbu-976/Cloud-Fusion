@@ -5,7 +5,7 @@ on:
     branches:
       - venkat-cloudathon-terraform-workflow
     paths:
-      - 'cloudathon/**'
+      - 'Postgresql_failover/**'
 
 jobs:
   terraform-apply:
@@ -25,7 +25,7 @@ jobs:
       - name: Setup GCP Authentication
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          credentials_json: ${{ secrets.ltc_hack_prj_1_service_account }}
 
       # Setup Terraform
       - name: Setup Terraform
@@ -37,7 +37,7 @@ jobs:
       - name: Terraform Init
         run: terraform init
         env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.ltc_hack_prj_1_service_account }}
 
       # Format Terraform files recursively
       - name: Terraform Format
@@ -52,17 +52,17 @@ jobs:
       - name: Terraform Plan
         run: terraform plan -out=tfplan
         env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.ltc_hack_prj_1_service_account }}
           
       # Terraform Apply
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
         env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.ltc_hack_prj_1_service_account }}
       
       # # Terraform Destroy
       # - name: Terraform Destroy
       #   run: terraform destroy -auto-approve
       #   env:
-      #     GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      #     GOOGLE_CREDENTIALS: ${{ secrets.ltc_hack_prj_1_service_account }}
       
