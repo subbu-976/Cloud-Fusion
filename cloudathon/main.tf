@@ -19,10 +19,10 @@ resource "google_container_node_pool" "active_nodes" {
   location   = "asia-south2-a"
   node_count = 1
   node_config {
-    machine_type = "e2-small"
-    disk_size_gb = 10
-    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-    preemptible  = true
+    machine_type    = "e2-small"
+    disk_size_gb    = 10
+    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+    preemptible     = true
   }
   depends_on = [google_container_cluster.active_cluster]
 }
@@ -46,10 +46,10 @@ resource "google_container_node_pool" "passive_nodes" {
   location   = "asia-south1-a"
   node_count = 1
   node_config {
-    machine_type = "e2-small"
-    disk_size_gb = 10
-    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-    preemptible  = true
+    machine_type    = "e2-small"
+    disk_size_gb    = 10
+    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+    preemptible     = true
   }
   depends_on = [google_container_cluster.passive_cluster]
 }
@@ -306,9 +306,9 @@ resource "kubernetes_deployment" "flask_app_active" {
       }
       spec {
         container {
-          image   = "python:3.9-slim"
-          name    = "flask-app"
-          command = ["python", "/app/app.py"]
+          image = "python:3.9-slim"
+          name  = "flask-app"
+          command = ["sh", "-c", "apt-get update && apt-get install -y python3-pip && pip3 install flask psycopg2-binary && sleep 10 && python3 /app/app.py"]
           port {
             container_port = 5000
           }
@@ -343,6 +343,15 @@ resource "kubernetes_deployment" "flask_app_active" {
               }
             }
           }
+          readiness_probe {
+            http_get {
+              path = "/healthz"
+              port = 5000
+            }
+            initial_delay_seconds = 20
+            period_seconds        = 5
+            failure_threshold     = 3
+          }
           resources {
             requests = {
               cpu    = "50m"
@@ -367,6 +376,14 @@ resource "kubernetes_deployment" "flask_app_active" {
             name       = "cloud-sql-proxy-credentials"
             mount_path = "/secrets/"
             read_only  = true
+          }
+          readiness_probe {
+            tcp_socket {
+              port = 5432
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 5
+            failure_threshold     = 3
           }
           security_context {
             run_as_non_root = true
@@ -405,7 +422,7 @@ resource "kubernetes_deployment" "flask_app_active" {
     kubernetes_secret.db_credentials_active
   ]
   timeouts {
-    create = "10m"
+    create = "15m"
   }
 }
 
@@ -451,9 +468,9 @@ resource "kubernetes_deployment" "flask_app_passive" {
       }
       spec {
         container {
-          image   = "python:3.9-slim"
-          name    = "flask-app"
-          command = ["python", "/app/app.py"]
+          image = "python:3.9-slim"
+          name  = "flask-app"
+          command = ["sh", "-c", "apt-get update && apt-get install -y python3-pip && pip3 install flask psycopg2-binary && sleep 10 && python3 /app/app.py"]
           port {
             container_port = 5000
           }
@@ -488,6 +505,15 @@ resource "kubernetes_deployment" "flask_app_passive" {
               }
             }
           }
+          readiness_probe {
+            http_get {
+              path = "/healthz"
+              port = 5000
+            }
+            initial_delay_seconds = 20
+            period_seconds        = 5
+            failure_threshold     = 3
+          }
           resources {
             requests = {
               cpu    = "50m"
@@ -512,6 +538,14 @@ resource "kubernetes_deployment" "flask_app_passive" {
             name       = "cloud-sql-proxy-credentials"
             mount_path = "/secrets/"
             read_only  = true
+          }
+          readiness_probe {
+            tcp_socket {
+              port = 5432
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 5
+            failure_threshold     = 3
           }
           security_context {
             run_as_non_root = true
@@ -550,7 +584,7 @@ resource "kubernetes_deployment" "flask_app_passive" {
     kubernetes_secret.db_credentials_passive
   ]
   timeouts {
-    create = "10m"
+    create = "15m"
   }
 }
 
