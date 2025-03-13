@@ -20,11 +20,29 @@ resource "google_container_node_pool" "active_nodes" {
   node_count = 1
   node_config {
     machine_type = "e2-medium"
-    disk_size_gb = 20  # Increased from 10 GB to 20 GB
+    disk_size_gb = 20
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+  initial_node_count = 1
+  autoscaling {
+    min_node_count = 1
+    max_node_count = 3
+  }
   depends_on = [google_container_cluster.active_cluster]
+}
+
+resource "google_compute_instance_group_named_port" "active_named_port" {
+  provider   = google.asia-south2
+  group      = google_container_node_pool.active_nodes.managed_instance_group_urls[0]
+  name       = "http"
+  port       = 80
+  zone        = "asia-south2-a"
+  depends_on = [google_container_node_pool.active_nodes]
 }
 
 # Passive GKE Cluster in asia-south1
@@ -47,11 +65,28 @@ resource "google_container_node_pool" "passive_nodes" {
   node_count = 1
   node_config {
     machine_type = "e2-medium"
-    disk_size_gb = 20  # Increased from 10 GB to 20 GB
+    disk_size_gb = 20
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+  initial_node_count = 1
+  autoscaling {
+    min_node_count = 1
+    max_node_count = 3
+  }
   depends_on = [google_container_cluster.passive_cluster]
+}
+resource "google_compute_instance_group_named_port" "passive_named_port" {
+  provider   = google.asia-south1
+  group      = google_container_node_pool.passive_nodes.managed_instance_group_urls[0]
+  name       = "http"
+  port       = 80
+  zone        = "asia-south1-a"
+  depends_on = [google_container_node_pool.passive_nodes]
 }
 
 # Cloud SQL PostgreSQL Primary Instance in asia-south2
@@ -188,14 +223,14 @@ resource "kubernetes_deployment" "hello_world_active" {
           }
           resources {
             requests = {
-              cpu            = "100m"
-              memory         = "128Mi"
-              ephemeral-storage = "100Mi"  # Request 100 MiB of ephemeral storage
+              cpu               = "100m"
+              memory            = "128Mi"
+              ephemeral-storage = "100Mi"
             }
             limits = {
-              cpu            = "200m"
-              memory         = "256Mi"
-              ephemeral-storage = "200Mi"  # Limit to 200 MiB of ephemeral storage
+              cpu               = "200m"
+              memory            = "256Mi"
+              ephemeral-storage = "200Mi"
             }
           }
         }
@@ -229,9 +264,10 @@ resource "kubernetes_service" "hello_world_service_active" {
     }
     port {
       port        = 80
-      target_port = "80"
+      target_port = 80
+      node_port   = 30080  # Arbitrary port between 30000-32767
     }
-    type = "NodePort"
+    type = "NodePort"  # Changed from ClusterIP
   }
   depends_on = [
     google_container_cluster.active_cluster,
@@ -284,14 +320,14 @@ resource "kubernetes_deployment" "hello_world_passive" {
           }
           resources {
             requests = {
-              cpu            = "100m"
-              memory         = "128Mi"
-              ephemeral-storage = "100Mi"  # Request 100 MiB of ephemeral storage
+              cpu               = "100m"
+              memory            = "128Mi"
+              ephemeral-storage = "100Mi"
             }
             limits = {
-              cpu            = "200m"
-              memory         = "256Mi"
-              ephemeral-storage = "200Mi"  # Limit to 200 MiB of ephemeral storage
+              cpu               = "200m"
+              memory            = "256Mi"
+              ephemeral-storage = "200Mi"
             }
           }
         }
@@ -325,9 +361,10 @@ resource "kubernetes_service" "hello_world_service_passive" {
     }
     port {
       port        = 80
-      target_port = "80"
+      target_port = 80
+      node_port   = 30080  # Use the same port for consistency
     }
-    type = "NodePort"
+    type = "NodePort"  # Changed from ClusterIP
   }
   depends_on = [
     google_container_cluster.passive_cluster,
@@ -335,7 +372,6 @@ resource "kubernetes_service" "hello_world_service_passive" {
     kubernetes_deployment.hello_world_passive
   ]
 }
-
 # Global Load Balancer for GKE Failover
 resource "google_compute_global_address" "global_ip" {
   provider = google.asia-south2
@@ -359,6 +395,7 @@ resource "google_compute_backend_service" "gke_backend" {
   provider    = google.asia-south2
   name        = "gke-backend-service"
   protocol    = "HTTP"
+  port_name   = "http" # This matches the named port set above
   timeout_sec = 30
   backend {
     group = google_container_node_pool.active_nodes.managed_instance_group_urls[0]
@@ -370,7 +407,9 @@ resource "google_compute_backend_service" "gke_backend" {
   depends_on = [
     google_container_node_pool.active_nodes,
     google_container_node_pool.passive_nodes,
-    google_compute_health_check.gke_health_check
+    google_compute_health_check.gke_health_check,
+    google_compute_instance_group_named_port.active_named_port,
+    google_compute_instance_group_named_port.passive_named_port
   ]
 }
 
