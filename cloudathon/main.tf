@@ -6,7 +6,7 @@ resource "google_sql_database_instance" "postgres_primary" {
   deletion_protection = false         # Set to true in production 
 
   settings {
-    tier              = "db-g1-small" # Small tier; adjust as needed
+    tier              = "db-g1-small" # Small tier; adjust as needed 
     availability_type = "REGIONAL"    # Multi-regional HA within asia-south2
     disk_size         = 10            # 10GB disk; adjust as needed
     ip_configuration {
