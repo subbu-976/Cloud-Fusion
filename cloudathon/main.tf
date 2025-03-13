@@ -41,7 +41,7 @@ resource "google_compute_instance_group_named_port" "active_named_port" {
   group      = google_container_node_pool.active_nodes.managed_instance_group_urls[0]
   name       = "http"
   port       = 80
-  zone        = "asia-south2-a"
+  zone       = "asia-south2-a"
   depends_on = [google_container_node_pool.active_nodes]
 }
 
@@ -85,7 +85,7 @@ resource "google_compute_instance_group_named_port" "passive_named_port" {
   group      = google_container_node_pool.passive_nodes.managed_instance_group_urls[0]
   name       = "http"
   port       = 80
-  zone        = "asia-south1-a"
+  zone       = "asia-south1-a"
   depends_on = [google_container_node_pool.passive_nodes]
 }
 
@@ -265,9 +265,9 @@ resource "kubernetes_service" "hello_world_service_active" {
     port {
       port        = 80
       target_port = 80
-      node_port   = 30080  # Arbitrary port between 30000-32767
+      node_port   = 30080 # Arbitrary port between 30000-32767
     }
-    type = "NodePort"  # Changed from ClusterIP
+    type = "NodePort" # Changed from ClusterIP
   }
   depends_on = [
     google_container_cluster.active_cluster,
@@ -362,9 +362,9 @@ resource "kubernetes_service" "hello_world_service_passive" {
     port {
       port        = 80
       target_port = 80
-      node_port   = 30080  # Use the same port for consistency
+      node_port   = 30080 # Use the same port for consistency
     }
-    type = "NodePort"  # Changed from ClusterIP
+    type = "NodePort" # Changed from ClusterIP
   }
   depends_on = [
     google_container_cluster.passive_cluster,
