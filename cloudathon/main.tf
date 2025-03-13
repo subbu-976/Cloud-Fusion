@@ -19,8 +19,8 @@ resource "google_container_node_pool" "active_nodes" {
   location   = "asia-south2-a"
   node_count = 1
   node_config {
-    machine_type = "e2-small"
-    disk_size_gb = 10
+    machine_type = "e2-medium"
+    disk_size_gb = 20  # Increased from 10 GB to 20 GB
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
@@ -46,8 +46,8 @@ resource "google_container_node_pool" "passive_nodes" {
   location   = "asia-south1-a"
   node_count = 1
   node_config {
-    machine_type = "e2-small"
-    disk_size_gb = 10
+    machine_type = "e2-medium"
+    disk_size_gb = 20  # Increased from 10 GB to 20 GB
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
@@ -101,509 +101,239 @@ resource "google_sql_database_instance" "postgres_replica" {
   depends_on = [google_sql_database_instance.postgres_primary]
 }
 
-# Database and User
-resource "google_sql_database" "app_db" {
-  provider   = google.asia-south2
-  name       = "app-database"
-  instance   = google_sql_database_instance.postgres_primary.name
-  depends_on = [google_sql_database_instance.postgres_primary]
-}
-
-resource "google_sql_user" "app_user" {
-  provider   = google.asia-south2
-  name       = "app-user"
-  instance   = google_sql_database_instance.postgres_primary.name
-  password   = "your-secure-password" # Replace with a secure password
-  depends_on = [google_sql_database_instance.postgres_primary]
-}
-
-# Service Account for Cloud SQL Auth Proxy
-resource "google_service_account" "cloud_sql_proxy_sa" {
-  provider     = google.asia-south2
-  account_id   = "cloud-sql-proxy-sa"
-  display_name = "Cloud SQL Proxy Service Account"
-}
-
-resource "google_project_iam_member" "cloud_sql_client" {
-  provider = google.asia-south2
-  project  = "cloudathon-453114" # Replace with your project ID
-  role     = "roles/cloudsql.client"
-  member   = "serviceAccount:${google_service_account.cloud_sql_proxy_sa.email}"
-}
-
-resource "google_service_account_key" "cloud_sql_proxy_key" {
-  service_account_id = google_service_account.cloud_sql_proxy_sa.name
-}
-
-# Kubernetes Secret for Service Account Key (Active Cluster)
-resource "kubernetes_secret" "cloud_sql_proxy_credentials_active" {
+# ConfigMap for Hello World HTML
+resource "kubernetes_config_map" "hello_world_config_active" {
   provider = kubernetes.asia-south2
   metadata {
-    name = "cloud-sql-proxy-credentials"
+    name = "hello-world-config"
   }
   data = {
-    "credentials.json" = base64decode(google_service_account_key.cloud_sql_proxy_key.private_key)
-  }
-  depends_on = [google_container_cluster.active_cluster]
-}
-
-# Kubernetes Secret for Service Account Key (Passive Cluster)
-resource "kubernetes_secret" "cloud_sql_proxy_credentials_passive" {
-  provider = kubernetes.asia-south1
-  metadata {
-    name = "cloud-sql-proxy-credentials"
-  }
-  data = {
-    "credentials.json" = base64decode(google_service_account_key.cloud_sql_proxy_key.private_key)
-  }
-  depends_on = [google_container_cluster.passive_cluster]
-}
-
-# Kubernetes Secret for Database Credentials (Active Cluster)
-resource "kubernetes_secret" "db_credentials_active" {
-  provider = kubernetes.asia-south2
-  metadata {
-    name = "db-credentials"
-  }
-  data = {
-    "username" = "app-user"
-    "password" = "your-secure-password" # Replace with the same password as above
-    "database" = "app-database"
-  }
-  depends_on = [google_container_cluster.active_cluster]
-}
-
-# Kubernetes Secret for Database Credentials (Passive Cluster)
-resource "kubernetes_secret" "db_credentials_passive" {
-  provider = kubernetes.asia-south1
-  metadata {
-    name = "db-credentials"
-  }
-  data = {
-    "username" = "app-user"
-    "password" = "your-secure-password" # Replace with the same password as above
-    "database" = "app-database"
-  }
-  depends_on = [google_container_cluster.passive_cluster]
-}
-
-# Flask App ConfigMap for Both Clusters (Shared Config)
-resource "kubernetes_config_map" "flask_app_config_active" {
-  provider = kubernetes.asia-south2
-  metadata {
-    name = "flask-app-config"
-  }
-  data = {
-    "app.py" = <<EOF
-from flask import Flask
-import psycopg2
-import os
-
-app = Flask(__name__)
-
-def get_db_connection():
-    conn = psycopg2.connect(
-        host="127.0.0.1",  # Cloud SQL Proxy runs on localhost
-        port="5432",
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME")
-    )
-    return conn
-
-@app.route('/')
-def hello():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message TEXT);")
-    cur.execute("INSERT INTO messages (message) VALUES ('Hello from DB!') ON CONFLICT DO NOTHING;")
-    cur.execute("SELECT message FROM messages ORDER BY id DESC LIMIT 1;")
-    message = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return f"Message from DB: {message}"
-
-@app.route('/healthz')
-def healthz():
-    return "OK"
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    "index.html" = <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hello World</title>
+</head>
+<body>
+  <h1>Hello World!</h1>
+</body>
+</html>
 EOF
   }
-  depends_on = [google_container_cluster.active_cluster]
+  depends_on = [google_container_cluster.active_cluster, google_container_node_pool.active_nodes]
 }
 
-resource "kubernetes_config_map" "flask_app_config_passive" {
+resource "kubernetes_config_map" "hello_world_config_passive" {
   provider = kubernetes.asia-south1
   metadata {
-    name = "flask-app-config"
+    name = "hello-world-config"
   }
   data = {
-    "app.py" = <<EOF
-from flask import Flask
-import psycopg2
-import os
-
-app = Flask(__name__)
-
-def get_db_connection():
-    conn = psycopg2.connect(
-        host="127.0.0.1",  # Cloud SQL Proxy runs on localhost
-        port="5432",
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME")
-    )
-    return conn
-
-@app.route('/')
-def hello():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message TEXT);")
-    cur.execute("INSERT INTO messages (message) VALUES ('Hello from DB!') ON CONFLICT DO NOTHING;")
-    cur.execute("SELECT message FROM messages ORDER BY id DESC LIMIT 1;")
-    message = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return f"Message from DB: {message}"
-
-@app.route('/healthz')
-def healthz():
-    return "OK"
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    "index.html" = <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hello World</title>
+</head>
+<body>
+  <h1>Hello World!</h1>
+</body>
+</html>
 EOF
   }
-  depends_on = [google_container_cluster.passive_cluster]
+  depends_on = [google_container_cluster.passive_cluster, google_container_node_pool.passive_nodes]
 }
 
-# Flask App Deployment on Active Cluster with Cloud SQL Proxy
-resource "kubernetes_deployment" "flask_app_active" {
+# Hello World Deployment on Active Cluster
+resource "kubernetes_deployment" "hello_world_active" {
   provider = kubernetes.asia-south2
   metadata {
-    name = "flask-app"
+    name = "hello-world"
     labels = {
-      app = "flask-app"
+      app = "hello-world"
     }
   }
   spec {
     replicas = 1
     selector {
       match_labels = {
-        app = "flask-app"
+        app = "hello-world"
       }
     }
     template {
       metadata {
         labels = {
-          app = "flask-app"
+          app = "hello-world"
         }
       }
       spec {
         container {
-          image   = "python:3.9-slim"
-          name    = "flask-app"
-          command = ["sh", "-c", "apt-get update && apt-get install -y python3-pip && pip3 install flask psycopg2-binary && sleep 10 && python3 /app/app.py"]
+          image = "nginx:latest"
+          name  = "nginx"
           port {
-            container_port = 5000
+            container_port = 80
           }
           volume_mount {
-            name       = "flask-app-config"
-            mount_path = "/app"
-          }
-          env {
-            name = "DB_USER"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret.db_credentials_active.metadata[0].name
-                key  = "username"
-              }
-            }
-          }
-          env {
-            name = "DB_PASSWORD"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret.db_credentials_active.metadata[0].name
-                key  = "password"
-              }
-            }
-          }
-          env {
-            name = "DB_NAME"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret.db_credentials_active.metadata[0].name
-                key  = "database"
-              }
-            }
+            name       = "html"
+            mount_path = "/usr/share/nginx/html"
           }
           readiness_probe {
             http_get {
-              path = "/healthz"
-              port = 5000
+              path = "/"
+              port = 80
             }
-            initial_delay_seconds = 20
+            initial_delay_seconds = 5
             period_seconds        = 5
             failure_threshold     = 3
           }
           resources {
             requests = {
-              cpu    = "50m"
-              memory = "64Mi"
+              cpu            = "100m"
+              memory         = "128Mi"
+              ephemeral-storage = "100Mi"  # Request 100 MiB of ephemeral storage
             }
             limits = {
-              cpu    = "100m"
-              memory = "128Mi"
-            }
-          }
-        }
-        container {
-          name  = "cloud-sql-proxy"
-          image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest"
-          args = [
-            "--structured-logs",
-            "--port=5432",
-            "${google_sql_database_instance.postgres_primary.project}:${google_sql_database_instance.postgres_primary.region}:${google_sql_database_instance.postgres_primary.name}=tcp:5432",
-            "--credentials-file=/secrets/credentials.json"
-          ]
-          volume_mount {
-            name       = "cloud-sql-proxy-credentials"
-            mount_path = "/secrets/"
-            read_only  = true
-          }
-          readiness_probe {
-            tcp_socket {
-              port = 5432
-            }
-            initial_delay_seconds = 10
-            period_seconds        = 5
-            failure_threshold     = 3
-          }
-          security_context {
-            run_as_non_root = true
-          }
-          resources {
-            requests = {
-              cpu    = "50m"
-              memory = "64Mi"
-            }
-            limits = {
-              cpu    = "100m"
-              memory = "128Mi"
+              cpu            = "200m"
+              memory         = "256Mi"
+              ephemeral-storage = "200Mi"  # Limit to 200 MiB of ephemeral storage
             }
           }
         }
         volume {
-          name = "flask-app-config"
+          name = "html"
           config_map {
-            name = kubernetes_config_map.flask_app_config_active.metadata[0].name
-          }
-        }
-        volume {
-          name = "cloud-sql-proxy-credentials"
-          secret {
-            secret_name = kubernetes_secret.cloud_sql_proxy_credentials_active.metadata[0].name
+            name = kubernetes_config_map.hello_world_config_active.metadata[0].name
           }
         }
       }
     }
   }
   depends_on = [
+    google_container_cluster.active_cluster,
     google_container_node_pool.active_nodes,
-    google_container_node_pool.passive_nodes,
-    kubernetes_config_map.flask_app_config_active,
-    kubernetes_secret.cloud_sql_proxy_credentials_active,
-    kubernetes_secret.db_credentials_active
+    kubernetes_config_map.hello_world_config_active
   ]
   timeouts {
-    create = "15m"
+    create = "10m"
   }
 }
 
-resource "kubernetes_service" "flask_app_service_active" {
+resource "kubernetes_service" "hello_world_service_active" {
   provider = kubernetes.asia-south2
   metadata {
-    name = "flask-app-service"
+    name = "hello-world-service"
   }
   spec {
     selector = {
-      app = "flask-app"
+      app = "hello-world"
     }
     port {
       port        = 80
-      target_port = "5000"
+      target_port = "80"
     }
     type = "NodePort"
   }
-  depends_on = [kubernetes_deployment.flask_app_active]
+  depends_on = [
+    google_container_cluster.active_cluster,
+    google_container_node_pool.active_nodes,
+    kubernetes_deployment.hello_world_active
+  ]
 }
 
-# Flask App Deployment on Passive Cluster with Cloud SQL Proxy
-resource "kubernetes_deployment" "flask_app_passive" {
+# Hello World Deployment on Passive Cluster
+resource "kubernetes_deployment" "hello_world_passive" {
   provider = kubernetes.asia-south1
   metadata {
-    name = "flask-app"
+    name = "hello-world"
     labels = {
-      app = "flask-app"
+      app = "hello-world"
     }
   }
   spec {
     replicas = 1
     selector {
       match_labels = {
-        app = "flask-app"
+        app = "hello-world"
       }
     }
     template {
       metadata {
         labels = {
-          app = "flask-app"
+          app = "hello-world"
         }
       }
       spec {
         container {
-          image   = "python:3.9-slim"
-          name    = "flask-app"
-          command = ["sh", "-c", "apt-get update && apt-get install -y python3-pip && pip3 install flask psycopg2-binary && sleep 10 && python3 /app/app.py"]
+          image = "nginx:latest"
+          name  = "nginx"
           port {
-            container_port = 5000
+            container_port = 80
           }
           volume_mount {
-            name       = "flask-app-config"
-            mount_path = "/app"
-          }
-          env {
-            name = "DB_USER"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret.db_credentials_passive.metadata[0].name
-                key  = "username"
-              }
-            }
-          }
-          env {
-            name = "DB_PASSWORD"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret.db_credentials_passive.metadata[0].name
-                key  = "password"
-              }
-            }
-          }
-          env {
-            name = "DB_NAME"
-            value_from {
-              secret_key_ref {
-                name = kubernetes_secret.db_credentials_passive.metadata[0].name
-                key  = "database"
-              }
-            }
+            name       = "html"
+            mount_path = "/usr/share/nginx/html"
           }
           readiness_probe {
             http_get {
-              path = "/healthz"
-              port = 5000
+              path = "/"
+              port = 80
             }
-            initial_delay_seconds = 20
+            initial_delay_seconds = 5
             period_seconds        = 5
             failure_threshold     = 3
           }
           resources {
             requests = {
-              cpu    = "50m"
-              memory = "64Mi"
+              cpu            = "100m"
+              memory         = "128Mi"
+              ephemeral-storage = "100Mi"  # Request 100 MiB of ephemeral storage
             }
             limits = {
-              cpu    = "100m"
-              memory = "128Mi"
-            }
-          }
-        }
-        container {
-          name  = "cloud-sql-proxy"
-          image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest"
-          args = [
-            "--structured-logs",
-            "--port=5432",
-            "${google_sql_database_instance.postgres_primary.project}:${google_sql_database_instance.postgres_primary.region}:${google_sql_database_instance.postgres_primary.name}=tcp:5432",
-            "--credentials-file=/secrets/credentials.json"
-          ]
-          volume_mount {
-            name       = "cloud-sql-proxy-credentials"
-            mount_path = "/secrets/"
-            read_only  = true
-          }
-          readiness_probe {
-            tcp_socket {
-              port = 5432
-            }
-            initial_delay_seconds = 10
-            period_seconds        = 5
-            failure_threshold     = 3
-          }
-          security_context {
-            run_as_non_root = true
-          }
-          resources {
-            requests = {
-              cpu    = "50m"
-              memory = "64Mi"
-            }
-            limits = {
-              cpu    = "100m"
-              memory = "128Mi"
+              cpu            = "200m"
+              memory         = "256Mi"
+              ephemeral-storage = "200Mi"  # Limit to 200 MiB of ephemeral storage
             }
           }
         }
         volume {
-          name = "flask-app-config"
+          name = "html"
           config_map {
-            name = kubernetes_config_map.flask_app_config_passive.metadata[0].name
-          }
-        }
-        volume {
-          name = "cloud-sql-proxy-credentials"
-          secret {
-            secret_name = kubernetes_secret.cloud_sql_proxy_credentials_passive.metadata[0].name
+            name = kubernetes_config_map.hello_world_config_passive.metadata[0].name
           }
         }
       }
     }
   }
   depends_on = [
-    google_container_node_pool.active_nodes,
+    google_container_cluster.passive_cluster,
     google_container_node_pool.passive_nodes,
-    kubernetes_config_map.flask_app_config_passive,
-    kubernetes_secret.cloud_sql_proxy_credentials_passive,
-    kubernetes_secret.db_credentials_passive
+    kubernetes_config_map.hello_world_config_passive
   ]
   timeouts {
-    create = "15m"
+    create = "10m"
   }
 }
 
-resource "kubernetes_service" "flask_app_service_passive" {
+resource "kubernetes_service" "hello_world_service_passive" {
   provider = kubernetes.asia-south1
   metadata {
-    name = "flask-app-service"
+    name = "hello-world-service"
   }
   spec {
     selector = {
-      app = "flask-app"
+      app = "hello-world"
     }
     port {
       port        = 80
-      target_port = "5000"
+      target_port = "80"
     }
     type = "NodePort"
   }
-  depends_on = [kubernetes_deployment.flask_app_passive]
+  depends_on = [
+    google_container_cluster.passive_cluster,
+    google_container_node_pool.passive_nodes,
+    kubernetes_deployment.hello_world_passive
+  ]
 }
 
 # Global Load Balancer for GKE Failover
@@ -617,7 +347,7 @@ resource "google_compute_health_check" "gke_health_check" {
   name     = "gke-health-check"
   http_health_check {
     port         = 80
-    request_path = "/healthz"
+    request_path = "/"
   }
   timeout_sec         = 5
   check_interval_sec  = 5
