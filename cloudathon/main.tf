@@ -19,10 +19,10 @@ resource "google_container_node_pool" "active_nodes" {
   location   = "asia-south2-a"
   node_count = 1
   node_config {
-    machine_type    = "e2-small"
-    disk_size_gb    = 10
-    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
-    preemptible     = true
+    machine_type = "e2-small"
+    disk_size_gb = 10
+    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    preemptible  = true
   }
   depends_on = [google_container_cluster.active_cluster]
 }
@@ -46,10 +46,10 @@ resource "google_container_node_pool" "passive_nodes" {
   location   = "asia-south1-a"
   node_count = 1
   node_config {
-    machine_type    = "e2-small"
-    disk_size_gb    = 10
-    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
-    preemptible     = true
+    machine_type = "e2-small"
+    disk_size_gb = 10
+    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    preemptible  = true
   }
   depends_on = [google_container_cluster.passive_cluster]
 }
@@ -306,8 +306,8 @@ resource "kubernetes_deployment" "flask_app_active" {
       }
       spec {
         container {
-          image = "python:3.9-slim"
-          name  = "flask-app"
+          image   = "python:3.9-slim"
+          name    = "flask-app"
           command = ["python", "/app/app.py"]
           port {
             container_port = 5000
@@ -451,8 +451,8 @@ resource "kubernetes_deployment" "flask_app_passive" {
       }
       spec {
         container {
-          image = "python:3.9-slim"
-          name  = "flask-app"
+          image   = "python:3.9-slim"
+          name    = "flask-app"
           command = ["python", "/app/app.py"]
           port {
             container_port = 5000
