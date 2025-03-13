@@ -3,7 +3,7 @@ resource "google_sql_database_instance" "postgres_primary" {
   name                = "postgres-primary"
   region              = "asia-south2" # Primary in asia-south2
   database_version    = "POSTGRES_16" # Latest version as of 2023
-  deletion_protection = false         # Set to true in production
+  deletion_protection = false         # Set to true in production 
 
   settings {
     tier              = "db-g1-small" # Small tier; adjust as needed
