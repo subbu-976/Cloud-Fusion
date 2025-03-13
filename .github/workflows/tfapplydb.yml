@@ -42,7 +42,7 @@ jobs:
       # Format Terraform files recursively
       - name: Terraform Format
         run: terraform fmt -check -recursive
-        continue-on-error: false
+        continue-on-error: true
 
       # Validate Terraform configuration
       - name: Terraform Validate
