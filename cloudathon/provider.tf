@@ -1,3 +1,14 @@
+
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+
 # Configure the Google Cloud provider for asia-south2 (primary region)
 provider "google" {
   alias   = "asia-south2"

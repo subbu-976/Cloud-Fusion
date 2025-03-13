@@ -1,24 +1,24 @@
 resource "google_sql_database_instance" "postgres_primary" {
   provider            = google.asia-south2
   name                = "postgres-primary"
-  region              = "asia-south2" # Primary in asia-south2
-  database_version    = "POSTGRES_16" # Latest version as of 2023
-  deletion_protection = false         # Set to true in production 
+  region              = "asia-south2"  # Primary in asia-south2
+  database_version    = "POSTGRES_16"  # Latest version as of 2023
+  deletion_protection = false          # Set to true in production
 
   settings {
-    tier              = "db-g1-small" # Small tier; adjust as needed 
-    availability_type = "REGIONAL"    # Multi-regional HA within asia-south2
-    disk_size         = 10            # 10GB disk; adjust as needed
+    tier              = "db-g1-small"  # Standard tier for ENTERPRISE edition
+    availability_type = "ZONAL"        # Zonal HA (single zone, no regional failover)
+    disk_size         = 10             # 10GB disk; adjust as needed
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "0.0.0.0/0" # Restrict to VPC in production
+        value = "0.0.0.0/0"  # Restrict to VPC in production
       }
     }
     backup_configuration {
-      enabled            = true # Enabled for replication and recovery
-      binary_log_enabled = true # Required for read replicas
+      enabled            = true  # Enabled for replication and recovery
+      binary_log_enabled = true  # Required for read replicas
     }
   }
 }
@@ -33,14 +33,14 @@ resource "google_sql_database_instance" "postgres_replica" {
   master_instance_name = google_sql_database_instance.postgres_primary.name # Links to primary
 
   settings {
-    tier              = "db-g1-small" # Match primary or adjust
-    availability_type = "ZONAL"       # Replicas are zonal by default
-    disk_size         = 10            # Match primary or adjust
+    tier              = "db-g1-small"  # Match primary or adjust
+    availability_type = "ZONAL"        # Replicas are zonal by default
+    disk_size         = 10             # Match primary or adjust
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "0.0.0.0/0" # Restrict to VPC in production
+        value = "0.0.0.0/0"  # Restrict to VPC in production
       }
     }
   }
