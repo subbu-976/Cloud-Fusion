@@ -23,7 +23,7 @@ resource "google_sql_database_instance" "postgres_primary" {
   }
 }
 
-# Cloud SQL PostgreSQL Read Replica in asia-south1 
+# Cloud SQL PostgreSQL Read Replica in asia-south1
 resource "google_sql_database_instance" "postgres_replica" {
   provider             = google.asia-south1
   name                 = "postgres-replica"
