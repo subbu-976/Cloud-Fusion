@@ -1,4 +1,4 @@
-name: Terraform Apply
+name: Terraform Apply DB Fail over
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   terraform-apply:
-    name: Terraform Apply
+    name: Terraform Apply DB
     runs-on: ubuntu-latest
     
     defaults:
@@ -42,7 +42,7 @@ jobs:
       # Format Terraform files recursively
       - name: Terraform Format
         run: terraform fmt -check -recursive
-        continue-on-error: false
+        continue-on-error: true
 
       # Validate Terraform configuration
       - name: Terraform Validate

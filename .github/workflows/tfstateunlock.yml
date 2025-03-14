@@ -37,21 +37,7 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      # Remove Terraform state lock automatically
-      - name: Remove Terraform State Lock
-        run: |
-          # Attempt a plan to trigger lock error, capture output
-          terraform plan -lock-timeout=0s > plan_output.txt 2>&1 || true
-          # Extract Lock ID from the error message
-          LOCK_ID=$(grep -oP 'ID: \K[0-9a-f-]+' plan_output.txt || echo "no-lock-found")
-          if [ "$LOCK_ID" != "no-lock-found" ]; then
-            echo "Found lock with ID: $LOCK_ID"
-            terraform force-unlock -force "$LOCK_ID"
-            echo "Lock removed successfully"
-          else
-            echo "No lock found or unable to extract Lock ID from output"
-            cat plan_output.txt  # Show full output for debugging
-            exit 1  # Fail the step if no lock is found
-          fi
+      - name: Terraform unlock
+        run: terraform force-unlock <lockid>
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
