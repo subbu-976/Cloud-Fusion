@@ -1,4 +1,4 @@
-name: Terraform Apply
+name: Terraform Apply DB Fail over
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   terraform-apply:
-    name: Terraform Apply
+    name: Terraform Apply DB
     runs-on: ubuntu-latest
     
     defaults:
