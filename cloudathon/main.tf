@@ -2,13 +2,17 @@
 
 data "google_client_config" "default" {}
 
+# -----------------------------------------------
+# GKE Clusters and Load Balancer Resources
+# -----------------------------------------------
+
 # Active GKE Cluster in asia-south2
 resource "google_container_cluster" "active_cluster" {
   provider                 = google.asia-south2
-  name                     = "active-gke-cluster"
-  location                 = "asia-south2-a"
+  name                     = var.active_cluster_name
+  location                 = var.active_cluster_location
   remove_default_node_pool = true
-  initial_node_count       = 1
+  initial_node_count       = var.node_count
   network                  = "default"
   subnetwork               = "default"
   deletion_protection      = false
@@ -18,11 +22,11 @@ resource "google_container_node_pool" "active_nodes" {
   provider   = google.asia-south2
   name       = "active-node-pool"
   cluster    = google_container_cluster.active_cluster.name
-  location   = "asia-south2-a"
-  node_count = 1
+  location   = var.active_cluster_location
+  node_count = var.node_count
   node_config {
-    machine_type = "e2-medium"
-    disk_size_gb = 20
+    machine_type = var.machine_type
+    disk_size_gb = var.disk_size_gb
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
@@ -31,8 +35,8 @@ resource "google_container_node_pool" "active_nodes" {
     auto_upgrade = true
   }
   autoscaling {
-    min_node_count = 1
-    max_node_count = 3
+    min_node_count = var.min_node_count
+    max_node_count = var.max_node_count
   }
   depends_on = [google_container_cluster.active_cluster]
 }
@@ -40,10 +44,10 @@ resource "google_container_node_pool" "active_nodes" {
 # Passive GKE Cluster in asia-south1
 resource "google_container_cluster" "passive_cluster" {
   provider                 = google.asia-south1
-  name                     = "passive-gke-cluster"
-  location                 = "asia-south1-a"
+  name                     = var.passive_cluster_name
+  location                 = var.passive_cluster_location
   remove_default_node_pool = true
-  initial_node_count       = 1
+  initial_node_count       = var.node_count
   network                  = "default"
   subnetwork               = "default"
   deletion_protection      = false
@@ -53,11 +57,11 @@ resource "google_container_node_pool" "passive_nodes" {
   provider   = google.asia-south1
   name       = "passive-node-pool"
   cluster    = google_container_cluster.passive_cluster.name
-  location   = "asia-south1-a"
-  node_count = 1
+  location   = var.passive_cluster_location
+  node_count = var.node_count
   node_config {
-    machine_type = "e2-medium"
-    disk_size_gb = 20
+    machine_type = var.machine_type
+    disk_size_gb = var.disk_size_gb
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
@@ -66,13 +70,13 @@ resource "google_container_node_pool" "passive_nodes" {
     auto_upgrade = true
   }
   autoscaling {
-    min_node_count = 1
-    max_node_count = 3
+    min_node_count = var.min_node_count
+    max_node_count = var.max_node_count
   }
   depends_on = [google_container_cluster.passive_cluster]
 }
 
-# ConfigMap for Hello World HTML
+# ConfigMap for Hello World HTML (Active Cluster)
 resource "kubernetes_config_map" "hello_world_config_active" {
   provider = kubernetes.asia-south2
   metadata {
@@ -94,6 +98,7 @@ EOF
   depends_on = [google_container_cluster.active_cluster, google_container_node_pool.active_nodes]
 }
 
+# ConfigMap for Hello World HTML (Passive Cluster)
 resource "kubernetes_config_map" "hello_world_config_passive" {
   provider = kubernetes.asia-south1
   metadata {
@@ -125,7 +130,7 @@ resource "kubernetes_deployment" "hello_world_active" {
     }
   }
   spec {
-    replicas = 1
+    replicas = var.replicas
     selector {
       match_labels = {
         app = "hello-world"
@@ -159,14 +164,14 @@ resource "kubernetes_deployment" "hello_world_active" {
           }
           resources {
             requests = {
-              cpu                 = "100m"
-              memory              = "128Mi"
-              "ephemeral-storage" = "100Mi"
+              cpu                 = var.cpu_request
+              memory              = var.memory_request
+              "ephemeral-storage" = var.ephemeral_storage_request
             }
             limits = {
-              cpu                 = "200m"
-              memory              = "256Mi"
-              "ephemeral-storage" = "200Mi"
+              cpu                 = var.cpu_limit
+              memory              = var.memory_limit
+              "ephemeral-storage" = var.ephemeral_storage_limit
             }
           }
         }
@@ -189,6 +194,7 @@ resource "kubernetes_deployment" "hello_world_active" {
   }
 }
 
+# Hello World Service on Active Cluster
 resource "kubernetes_service" "hello_world_service_active" {
   provider = kubernetes.asia-south2
   metadata {
@@ -222,7 +228,7 @@ resource "kubernetes_deployment" "hello_world_passive" {
     }
   }
   spec {
-    replicas = 1
+    replicas = var.replicas
     selector {
       match_labels = {
         app = "hello-world"
@@ -256,14 +262,14 @@ resource "kubernetes_deployment" "hello_world_passive" {
           }
           resources {
             requests = {
-              cpu                 = "100m"
-              memory              = "128Mi"
-              "ephemeral-storage" = "100Mi"
+              cpu                 = var.cpu_request
+              memory              = var.memory_request
+              "ephemeral-storage" = var.ephemeral_storage_request
             }
             limits = {
-              cpu                 = "200m"
-              memory              = "256Mi"
-              "ephemeral-storage" = "200Mi"
+              cpu                 = var.cpu_limit
+              memory              = var.memory_limit
+              "ephemeral-storage" = var.ephemeral_storage_limit
             }
           }
         }
@@ -286,6 +292,7 @@ resource "kubernetes_deployment" "hello_world_passive" {
   }
 }
 
+# Hello World Service on Passive Cluster
 resource "kubernetes_service" "hello_world_service_passive" {
   provider = kubernetes.asia-south1
   metadata {
@@ -325,32 +332,31 @@ resource "google_compute_health_check" "gke_health_check" {
     port         = 30080
     request_path = "/"
   }
-  timeout_sec         = 1 # Faster timeout
-  check_interval_sec  = 2 # Check more frequently
-  healthy_threshold   = 2
-  unhealthy_threshold = 2 # Fail after 2 failed checks (~4 seconds)
+  timeout_sec         = var.health_check_timeout_sec
+  check_interval_sec  = var.health_check_interval_sec
+  healthy_threshold   = var.healthy_threshold
+  unhealthy_threshold = var.unhealthy_threshold
 }
-
 
 resource "google_compute_backend_service" "gke_backend" {
   provider    = google.asia-south2
   name        = "gke-backend-service"
   protocol    = "HTTP"
   port_name   = "http"
-  timeout_sec = 30
+  timeout_sec = var.backend_timeout_sec
 
   backend {
     group           = google_container_node_pool.active_nodes.managed_instance_group_urls[0]
     balancing_mode  = "UTILIZATION"
-    capacity_scaler = 1.0
-    max_utilization = 0.8
+    capacity_scaler = var.capacity_scaler
+    max_utilization = var.max_utilization
   }
 
   backend {
     group           = google_container_node_pool.passive_nodes.managed_instance_group_urls[0]
     balancing_mode  = "UTILIZATION"
-    capacity_scaler = 1.0
-    max_utilization = 0.8
+    capacity_scaler = var.capacity_scaler
+    max_utilization = var.max_utilization
   }
 
   health_checks = [google_compute_health_check.gke_health_check.id]
@@ -366,7 +372,7 @@ resource "google_compute_instance_group_named_port" "active_named_port" {
   group      = google_container_node_pool.active_nodes.managed_instance_group_urls[0]
   name       = "http"
   port       = 30080
-  zone       = "asia-south2-a"
+  zone       = var.active_cluster_location
   depends_on = [google_container_node_pool.active_nodes]
 }
 
@@ -375,7 +381,7 @@ resource "google_compute_instance_group_named_port" "passive_named_port" {
   group      = google_container_node_pool.passive_nodes.managed_instance_group_urls[0]
   name       = "http"
   port       = 30080
-  zone       = "asia-south1-a"
+  zone       = var.passive_cluster_location
   depends_on = [google_container_node_pool.passive_nodes]
 }
 
@@ -405,7 +411,7 @@ resource "google_compute_global_forwarding_rule" "gke_forwarding_rule" {
   ]
 }
 
-# Firewall Rule for NodePort Traffic
+# Firewall Rules for Load Balancer and NodePort Traffic
 resource "google_compute_firewall" "allow_nodeport_traffic" {
   provider = google.asia-south2
   name     = "allow-nodeport-traffic"
@@ -428,7 +434,6 @@ resource "google_compute_firewall" "allow_nodeport_traffic" {
   ]
 }
 
-# Dedicated Firewall Rule for Health Check Traffic
 resource "google_compute_firewall" "allow_health_checks" {
   provider = google.asia-south2
   name     = "allow-health-checks"
@@ -453,7 +458,6 @@ resource "google_compute_firewall" "allow_health_checks" {
   ]
 }
 
-# Additional Firewall Rule for Direct Access on Port 80 (Optional)
 resource "google_compute_firewall" "allow_direct_access_port_80" {
   provider = google.asia-south2
   name     = "allow-direct-access-port-80"
@@ -464,7 +468,7 @@ resource "google_compute_firewall" "allow_direct_access_port_80" {
     ports    = ["80"]
   }
 
-  source_ranges = ["0.0.0.0/0"] # Adjust to your IP for security
+  source_ranges = ["0.0.0.0/0"]
   target_tags = [
     "gke-active-gke-cluster-232e0592-node",
     "gke-passive-gke-cluster-7319025a-node"
@@ -476,7 +480,7 @@ resource "google_compute_firewall" "allow_direct_access_port_80" {
   ]
 }
 
-# Null resource to ensure instance groups are ready
+# Null Resource to Ensure Instance Groups are Ready
 resource "null_resource" "wait_for_instance_groups" {
   depends_on = [
     google_container_node_pool.active_nodes,
@@ -488,88 +492,124 @@ resource "null_resource" "wait_for_instance_groups" {
   }
 }
 
-# Data sources to fetch instance group details
+# Data Sources to Fetch Instance Group Details
 data "google_compute_instance_group" "active_instance_group" {
   provider   = google.asia-south2
   name       = element([for url in google_container_node_pool.active_nodes.managed_instance_group_urls : element(split("/", url), length(split("/", url)) - 1)], 0)
-  zone       = "asia-south2-a"
+  zone       = var.active_cluster_location
   depends_on = [null_resource.wait_for_instance_groups]
 }
 
 data "google_compute_instance_group" "passive_instance_group" {
   provider   = google.asia-south1
   name       = element([for url in google_container_node_pool.passive_nodes.managed_instance_group_urls : element(split("/", url), length(split("/", url)) - 1)], 0)
-  zone       = "asia-south1-a"
+  zone       = var.passive_cluster_location
   depends_on = [null_resource.wait_for_instance_groups]
 }
 
-# Fetch instance details for active node
+# Fetch Instance Details for Active and Passive Nodes
 data "google_compute_instance" "active_instance" {
   provider   = google.asia-south2
   name       = element(split("/", tolist(data.google_compute_instance_group.active_instance_group.instances)[0]), 10)
-  zone       = "asia-south2-a"
+  zone       = var.active_cluster_location
   depends_on = [data.google_compute_instance_group.active_instance_group]
 }
 
-# Fetch instance details for passive node
 data "google_compute_instance" "passive_instance" {
   provider   = google.asia-south1
   name       = element(split("/", tolist(data.google_compute_instance_group.passive_instance_group.instances)[0]), 10)
-  zone       = "asia-south1-a"
+  zone       = var.passive_cluster_location
   depends_on = [data.google_compute_instance_group.passive_instance_group]
 }
 
+# -----------------------------------------------
+# Database Creation Resources
+# -----------------------------------------------
 
+# Secrets for Database Username and Password
+resource "google_secret_manager_secret" "db_username_secret" {
+  secret_id = "dbusername"
+  replication {
+    auto {}
+  }
+}
 
-### PostgreSQL DB's creation code
+resource "google_secret_manager_secret_version" "db_username_version" {
+  secret      = google_secret_manager_secret.db_username_secret.id
+  secret_data = "postgres" # Hardcoded as per requirement
+}
+
+data "google_secret_manager_secret_version" "db_username" {
+  secret  = google_secret_manager_secret.db_username_secret.id
+  version = google_secret_manager_secret_version.db_username_version.version
+}
+
+resource "google_secret_manager_secret" "db_password_secret" {
+  secret_id = "dbpassword"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "db_password_version" {
+  secret      = google_secret_manager_secret.db_password_secret.id
+  secret_data = "primarydbpassword" # Hardcoded as per requirement
+}
+
+data "google_secret_manager_secret_version" "db_password" {
+  secret  = google_secret_manager_secret.db_password_secret.id
+  version = google_secret_manager_secret_version.db_password_version.version
+}
+
+# Primary PostgreSQL Database Instance in asia-south2
 resource "google_sql_database_instance" "postgres_primary" {
   provider            = google.asia-south2
-  name                = "postgres-primary"
-  region              = "asia-south2"
-  database_version    = "POSTGRES_15"
+  name                = var.primary_db_name
+  region              = var.primary_db_region
+  database_version    = var.database_version
   deletion_protection = false
 
   settings {
-    tier              = "db-g1-small"
+    tier              = var.db_tier
     availability_type = "ZONAL"
-    disk_size         = 10
+    disk_size         = var.db_disk_size
 
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "203.0.113.0/24"
+        value = var.authorized_network_range
       }
     }
 
     backup_configuration {
-      enabled                        = true          
-      start_time                     = "03:00"       
-      location                       = "asia-south2" 
+      enabled                        = true
+      start_time                     = "03:00"
+      location                       = var.primary_db_region
       point_in_time_recovery_enabled = true
     }
   }
 }
 
-# Cloud SQL PostgreSQL Read Replica in asia-south1 
+# Cloud SQL PostgreSQL Read Replica in asia-south1
 resource "google_sql_database_instance" "postgres_replica" {
   provider             = google.asia-south1
-  name                 = "postgres-replica"
-  region               = "asia-south1"
-  database_version     = "POSTGRES_15"
+  name                 = var.replica_db_name
+  region               = var.replica_db_region
+  database_version     = var.database_version
   deletion_protection  = false
   master_instance_name = google_sql_database_instance.postgres_primary.name
 
   settings {
-    tier              = "db-g1-small"
+    tier              = var.db_tier
     availability_type = "ZONAL"
-    disk_size         = 10
+    disk_size         = var.db_disk_size
 
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "203.0.113.0/24" # Replace with your specific IP range
+        value = var.authorized_network_range
       }
     }
   }
@@ -577,32 +617,38 @@ resource "google_sql_database_instance" "postgres_replica" {
   depends_on = [google_sql_database_instance.postgres_primary]
 }
 
-# Database on the primary instance
+# Database on the Primary Instance
 resource "google_sql_database" "test_db" {
   provider = google.asia-south2
-  name     = "test_db"
+  name     = var.test_db_name
   instance = google_sql_database_instance.postgres_primary.name
 }
 
-# User for the primary instance
+# User for the Primary Instance
 resource "google_sql_user" "postgres_user" {
   provider = google.asia-south2
-  name     = "postgres"
+  name     = data.google_secret_manager_secret_version.db_username.secret_data
   instance = google_sql_database_instance.postgres_primary.name
-  password = "primarydbpassword"
+  password = data.google_secret_manager_secret_version.db_password.secret_data
+  depends_on = [
+    google_sql_database_instance.postgres_primary,
+    data.google_secret_manager_secret_version.db_username,
+    data.google_secret_manager_secret_version.db_password
+  ]
 }
 
+# -----------------------------------------------
+# Cloud Function Creation Resources
+# -----------------------------------------------
 
-### Cloud function creation code
-
-# Create a local ZIP file for inline code
+# Create a Local ZIP File for Inline Code
 data "archive_file" "function_source" {
   type        = "zip"
   output_path = "${path.module}/db-failover-source.zip"
 
   source {
     content  = <<EOF
-from flask import Flask, jsonify, request  # Added 'request' import
+from flask import Flask, jsonify, request
 import os
 import logging
 import time
@@ -642,10 +688,10 @@ def wait_for_operation(operation_id):
                 logger.info(f"Operation {operation_id} completed successfully")
                 break
             logger.info(f"Waiting for operation {operation_id} to complete...")
-            time.sleep(30)  # Increased delay to prevent API rate limit issues
+            time.sleep(30)
         except Exception as e:
             logger.error(f"Error while waiting for operation {operation_id}: {str(e)}")
-            time.sleep(10)  # Small delay before retrying
+            time.sleep(10)
 
 def check_instance_role(instance_name):
     """Check if the given Cloud SQL instance is already a standalone primary."""
@@ -691,7 +737,6 @@ def promote_replica_to_primary():
 def reconfigure_old_primary_as_replica(new_primary_instance):
     """Reconfigure the old primary instance as a replica of the new primary."""
     try:
-        # Step 1: Check if instance exists
         try:
             sqladmin.instances().get(project=GCP_PROJECT, instance=PRIMARY_INSTANCE).execute()
             logger.info(f"{PRIMARY_INSTANCE} exists, proceeding to delete.")
@@ -701,7 +746,6 @@ def reconfigure_old_primary_as_replica(new_primary_instance):
             else:
                 raise
 
-        # Step 2: Delete the old primary instance with retries
         max_retries = 5
         for attempt in range(max_retries):
             try:
@@ -724,7 +768,6 @@ def reconfigure_old_primary_as_replica(new_primary_instance):
             if attempt == max_retries - 1:
                 raise Exception(f"Failed to delete {PRIMARY_INSTANCE} after {max_retries} attempts.")
 
-        # Step 3: Recreate the primary instance as a replica
         logger.info(f"Creating {PRIMARY_INSTANCE} as a replica of {new_primary_instance}.")
         instance_body = {
             "name": PRIMARY_INSTANCE,
@@ -753,15 +796,12 @@ def reconfigure_old_primary_as_replica(new_primary_instance):
         return {"error": str(e)}
 
 @app.route("/trigger-failover", methods=["POST"])
-def trigger_failover(request):  # Added 'request' parameter to fix TypeError
-    """Trigger the full failover: promote replica and reconfigure old primary."""
+def trigger_failover(request):
     try:
-        # Step 1: Promote the replica to primary (if needed)
         promotion_result = promote_replica_to_primary()
         if "error" in promotion_result:
             return jsonify({"status": "error", "message": promotion_result["error"]}), 500
 
-        # Step 2: Reconfigure the old primary as a replica of the new primary
         reconfiguration_result = reconfigure_old_primary_as_replica(REPLICA_INSTANCE)
         if "error" in reconfiguration_result:
             return jsonify({"status": "error", "message": reconfiguration_result["error"]}), 500
@@ -777,7 +817,7 @@ def trigger_failover(request):  # Added 'request' parameter to fix TypeError
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8080))  # Use dynamic PORT for Cloud Run
+    port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
 EOF
     filename = "main.py"
@@ -794,11 +834,11 @@ EOF
   }
 }
 
-# Upload the ZIP to a GCS bucket
+# Upload the ZIP to a GCS Bucket
 resource "google_storage_bucket" "source_bucket" {
-  project                     = "cloudathon-453114"
-  name                        = "cloudathon-453114-source"
-  location                    = "ASIA-SOUTH2" # Bucket can be in one region; both functions can access it
+  project                     = var.project_id
+  name                        = var.source_bucket_name
+  location                    = var.source_bucket_location
   uniform_bucket_level_access = true
 }
 
@@ -810,7 +850,7 @@ resource "google_storage_bucket_object" "source_object" {
 
 # Cloud Function in asia-south2
 resource "google_cloudfunctions2_function" "db_failover_asia_south2" {
-  project  = "cloudathon-453114"
+  project  = var.project_id
   name     = "db-failover-asia-south2"
   location = "asia-south2"
 
@@ -826,15 +866,15 @@ resource "google_cloudfunctions2_function" "db_failover_asia_south2" {
   }
 
   service_config {
-    available_memory      = "512M"
-    timeout_seconds       = 600
+    available_memory      = var.function_memory
+    timeout_seconds       = var.function_timeout
     ingress_settings      = "ALLOW_ALL"
-    service_account_email = "vdc-serviceaccount-cloudathon@cloudathon-453114.iam.gserviceaccount.com"
+    service_account_email = var.service_account_email
 
     environment_variables = {
-      GCP_PROJECT      = "cloudathon-453114"
-      PRIMARY_INSTANCE = "postgres-primary" # Adjust to your actual instance name
-      REPLICA_INSTANCE = "postgres-replica" # Adjust to your actual instance name
+      GCP_PROJECT      = var.project_id
+      PRIMARY_INSTANCE = var.primary_db_name
+      REPLICA_INSTANCE = var.replica_db_name
     }
 
     all_traffic_on_latest_revision = true
@@ -843,7 +883,7 @@ resource "google_cloudfunctions2_function" "db_failover_asia_south2" {
 
 # Cloud Function in asia-south1
 resource "google_cloudfunctions2_function" "db_failover_asia_south1" {
-  project  = "cloudathon-453114"
+  project  = var.project_id
   name     = "db-failover-asia-south1"
   location = "asia-south1"
 
@@ -859,24 +899,24 @@ resource "google_cloudfunctions2_function" "db_failover_asia_south1" {
   }
 
   service_config {
-    available_memory      = "512M"
-    timeout_seconds       = 600
+    available_memory      = var.function_memory
+    timeout_seconds       = var.function_timeout
     ingress_settings      = "ALLOW_ALL"
-    service_account_email = "vdc-serviceaccount-cloudathon@cloudathon-453114.iam.gserviceaccount.com"
+    service_account_email = var.service_account_email
 
     environment_variables = {
-      GCP_PROJECT      = "cloudathon-453114"
-      PRIMARY_INSTANCE = "postgres-replica"
-      REPLICA_INSTANCE = "postgres-primary"
+      GCP_PROJECT      = var.project_id
+      PRIMARY_INSTANCE = var.replica_db_name
+      REPLICA_INSTANCE = var.primary_db_name
     }
 
     all_traffic_on_latest_revision = true
   }
 }
 
-# Allow unauthenticated invocations for asia-south2 function
+# Allow Unauthenticated Invocations for asia-south2 Function
 resource "google_cloudfunctions2_function_iam_member" "public_access_asia_south2" {
-  project        = "cloudathon-453114"
+  project        = var.project_id
   location       = google_cloudfunctions2_function.db_failover_asia_south2.location
   cloud_function = google_cloudfunctions2_function.db_failover_asia_south2.name
   role           = "roles/cloudfunctions.invoker"
@@ -884,13 +924,12 @@ resource "google_cloudfunctions2_function_iam_member" "public_access_asia_south2
   depends_on     = [google_cloudfunctions2_function.db_failover_asia_south2]
 }
 
-# Allow unauthenticated invocations for asia-south1 function
+# Allow Unauthenticated Invocations for asia-south1 Function
 resource "google_cloudfunctions2_function_iam_member" "public_access_asia_south1" {
-  project        = "cloudathon-453114"
+  project        = var.project_id
   location       = google_cloudfunctions2_function.db_failover_asia_south1.location
   cloud_function = google_cloudfunctions2_function.db_failover_asia_south1.name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
   depends_on     = [google_cloudfunctions2_function.db_failover_asia_south1]
 }
-
