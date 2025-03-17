@@ -10,17 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ✅ Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Ensure full history for branch detection
-
+     
+      # ✅ Set up JDK 17 (if needed)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # ✅ Install Sonar Scanner
       - name: Install Sonar Scanner
         run: |
           sudo apt-get update -y
@@ -31,12 +32,13 @@ jobs:
           sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
           sonar-scanner --version
 
+      # ✅ Run Sonar Scanner
       - name: SonarCloud Scan
         run: |
           sonar-scanner \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.sources=./
+            -Dsonar.sources=cloudathon_test \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
