@@ -159,13 +159,13 @@ resource "kubernetes_deployment" "hello_world_active" {
           }
           resources {
             requests = {
-              cpu               = "100m"
-              memory            = "128Mi"
+              cpu                 = "100m"
+              memory              = "128Mi"
               "ephemeral-storage" = "100Mi"
             }
             limits = {
-              cpu               = "200m"
-              memory            = "256Mi"
+              cpu                 = "200m"
+              memory              = "256Mi"
               "ephemeral-storage" = "200Mi"
             }
           }
@@ -256,13 +256,13 @@ resource "kubernetes_deployment" "hello_world_passive" {
           }
           resources {
             requests = {
-              cpu               = "100m"
-              memory            = "128Mi"
+              cpu                 = "100m"
+              memory              = "128Mi"
               "ephemeral-storage" = "100Mi"
             }
             limits = {
-              cpu               = "200m"
-              memory            = "256Mi"
+              cpu                 = "200m"
+              memory              = "256Mi"
               "ephemeral-storage" = "200Mi"
             }
           }
@@ -325,10 +325,10 @@ resource "google_compute_health_check" "gke_health_check" {
     port         = 30080
     request_path = "/"
   }
-  timeout_sec         = 1   # Faster timeout
-  check_interval_sec  = 2   # Check more frequently
+  timeout_sec         = 1 # Faster timeout
+  check_interval_sec  = 2 # Check more frequently
   healthy_threshold   = 2
-  unhealthy_threshold = 2   # Fail after 2 failed checks (~4 seconds)
+  unhealthy_threshold = 2 # Fail after 2 failed checks (~4 seconds)
 }
 
 
@@ -490,32 +490,32 @@ resource "null_resource" "wait_for_instance_groups" {
 
 # Data sources to fetch instance group details
 data "google_compute_instance_group" "active_instance_group" {
-  provider = google.asia-south2
-  name     = element([for url in google_container_node_pool.active_nodes.managed_instance_group_urls : element(split("/", url), length(split("/", url)) - 1)], 0)
-  zone     = "asia-south2-a"
+  provider   = google.asia-south2
+  name       = element([for url in google_container_node_pool.active_nodes.managed_instance_group_urls : element(split("/", url), length(split("/", url)) - 1)], 0)
+  zone       = "asia-south2-a"
   depends_on = [null_resource.wait_for_instance_groups]
 }
 
 data "google_compute_instance_group" "passive_instance_group" {
-  provider = google.asia-south1
-  name     = element([for url in google_container_node_pool.passive_nodes.managed_instance_group_urls : element(split("/", url), length(split("/", url)) - 1)], 0)
-  zone     = "asia-south1-a"
+  provider   = google.asia-south1
+  name       = element([for url in google_container_node_pool.passive_nodes.managed_instance_group_urls : element(split("/", url), length(split("/", url)) - 1)], 0)
+  zone       = "asia-south1-a"
   depends_on = [null_resource.wait_for_instance_groups]
 }
 
 # Fetch instance details for active node
 data "google_compute_instance" "active_instance" {
-  provider = google.asia-south2
-  name     = element(split("/", tolist(data.google_compute_instance_group.active_instance_group.instances)[0]), 10)
-  zone     = "asia-south2-a"
+  provider   = google.asia-south2
+  name       = element(split("/", tolist(data.google_compute_instance_group.active_instance_group.instances)[0]), 10)
+  zone       = "asia-south2-a"
   depends_on = [data.google_compute_instance_group.active_instance_group]
 }
 
 # Fetch instance details for passive node
 data "google_compute_instance" "passive_instance" {
-  provider = google.asia-south1
-  name     = element(split("/", tolist(data.google_compute_instance_group.passive_instance_group.instances)[0]), 10)
-  zone     = "asia-south1-a"
+  provider   = google.asia-south1
+  name       = element(split("/", tolist(data.google_compute_instance_group.passive_instance_group.instances)[0]), 10)
+  zone       = "asia-south1-a"
   depends_on = [data.google_compute_instance_group.passive_instance_group]
 }
 
@@ -546,10 +546,10 @@ resource "google_sql_database_instance" "postgres_primary" {
     }
 
     backup_configuration {
-      enabled                        = true  # Turn on backups
-      start_time                     = "03:00" # Backup window (UTC)
-      location                        = "asia-south2" # Backup location
-      point_in_time_recovery_enabled = true  # Enable PITR
+      enabled                        = true          # Turn on backups
+      start_time                     = "03:00"       # Backup window (UTC)
+      location                       = "asia-south2" # Backup location
+      point_in_time_recovery_enabled = true          # Enable PITR
       # binary_log_enabled             = true  # Required for PITR
     }
   }
