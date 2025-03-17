@@ -8,8 +8,8 @@ on:
       - 'cloudathon/**'
 
 jobs:
-  Sonarqube:
-    name: Sonarqube
+  TerraformPlan:
+    name: Terraform Apply
     runs-on: ubuntu-latest
     
     defaults:

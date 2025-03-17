@@ -522,9 +522,6 @@ data "google_compute_instance" "passive_instance" {
 
 
 ### PostgreSQL DB's creation code
-
-
-# Cloud SQL PostgreSQL Primary Instance in asia-south2
 resource "google_sql_database_instance" "postgres_primary" {
   provider            = google.asia-south2
   name                = "postgres-primary"
@@ -541,16 +538,15 @@ resource "google_sql_database_instance" "postgres_primary" {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "203.0.113.0/24" # Replace with your specific IP range
+        value = "203.0.113.0/24"
       }
     }
 
     backup_configuration {
-      enabled                        = true          # Turn on backups
-      start_time                     = "03:00"       # Backup window (UTC)
-      location                       = "asia-south2" # Backup location
-      point_in_time_recovery_enabled = true          # Enable PITR
-      # binary_log_enabled             = true  # Required for PITR
+      enabled                        = true          
+      start_time                     = "03:00"       
+      location                       = "asia-south2" 
+      point_in_time_recovery_enabled = true
     }
   }
 }
