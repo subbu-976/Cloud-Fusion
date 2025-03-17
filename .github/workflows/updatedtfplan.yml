@@ -1,0 +1,55 @@
+name: Terraform Plan
+
+on:
+  push:
+    branches:
+      - venkat-cloudathon-terraform-workflow
+    paths:
+      - 'cloudathon/**'
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./cloudathon
+
+    steps:
+      # Checkout the repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Setup Google Cloud SDK
+      - name: Setup GCP Authentication
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      # Initialize Terraform with GCP provider
+      - name: Terraform Init
+        run: terraform init
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      # Format Terraform files recursively
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+        continue-on-error: false
+
+      # Validate Terraform configuration
+      - name: Terraform Validate
+        run: terraform validate
+
+      # Generate Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
