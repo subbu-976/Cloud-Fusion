@@ -522,8 +522,6 @@ data "google_compute_instance" "passive_instance" {
 
 
 ### PostgreSQL DB's creation code
-
-
 # Cloud SQL PostgreSQL Primary Instance in asia-south2
 resource "google_sql_database_instance" "postgres_primary" {
   provider            = google.asia-south2
