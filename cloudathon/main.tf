@@ -541,7 +541,7 @@ resource "google_sql_database_instance" "postgres_primary" {
       ipv4_enabled = true
       authorized_networks {
         name  = "gke-clusters"
-        value = "203.0.113.0/24" # Replace with your specific IP range
+        value = "203.0.113.0/24" # Replace with your specific IP range 
       }
     }
 
