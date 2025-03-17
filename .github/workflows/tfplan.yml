@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - venkat-cloudathon-terraform-workflow
-    paths:
-      - 'cloudathon/**'
 
 jobs:
   sonarcloud:
@@ -15,11 +13,15 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full history for branch detection
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
       - name: Install Sonar Scanner
         run: |
           sudo apt-get update -y
@@ -29,6 +31,7 @@ jobs:
           sudo mv sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner
           sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
           sonar-scanner --version
+
       - name: SonarCloud Scan
         run: |
           sonar-scanner \
@@ -47,38 +50,31 @@ jobs:
         working-directory: ./cloudathon
 
     steps:
-      # Checkout the repository code
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Setup Google Cloud SDK
       - name: Setup GCP Authentication
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
 
-      # Initialize Terraform with GCP provider
       - name: Terraform Init
         run: terraform init
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      # Format Terraform files recursively
       - name: Terraform Format
         run: terraform fmt -check -recursive
         continue-on-error: false
 
-      # Validate Terraform configuration
       - name: Terraform Validate
         run: terraform validate
 
-      # Generate Terraform Plan
       - name: Terraform Plan
         run: terraform plan -out=tfplan
         env:
