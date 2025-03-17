@@ -798,7 +798,7 @@ EOF
   }
 }
 
-# Upload the ZIP to a GCS bucket 
+# Upload the ZIP to a GCS bucket
 resource "google_storage_bucket" "source_bucket" {
   project                     = "cloudathon-453114"
   name                        = "cloudathon-453114-source"
