@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - venkat-cloudathon-terraform-workflow
-    paths:
-      - 'cloudathon/**'
 
 jobs:
   sonarcloud:
@@ -39,9 +37,6 @@ jobs:
           sonar-scanner \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.projectName="subbu-976" \
-            -Dsonar.projectVersion="1.0" \
-            -Dsonar.branch.name=venkat-cloudathon-terraform-workflow \
             -Dsonar.sources=. \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
