@@ -8,8 +8,8 @@ on:
       - 'cloudathon/**'
 
 jobs:
-  terraform-apply:
-    name: Terraform Apply
+  Sonarqube:
+    name: Sonarqube
     runs-on: ubuntu-latest
     
     defaults:
@@ -54,11 +54,11 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
           
-      # Terraform Apply
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      # # Terraform Apply
+      # - name: Terraform Apply
+      #   run: terraform apply -auto-approve tfplan
+      #   env:
+      #     GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       
       # # Terraform Destroy
       # - name: Terraform Destroy
