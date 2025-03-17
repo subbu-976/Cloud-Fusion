@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "ltc-hack-prj-1-bucket"
+    bucket = "cloudathon-vdc"
     prefix = "terraform/state"
   }
 }

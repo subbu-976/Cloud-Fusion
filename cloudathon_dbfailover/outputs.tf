@@ -17,3 +17,19 @@ output "replica_instance_ip" {
   value       = google_sql_database_instance.postgres_replica.ip_address[0].ip_address
   description = "Public IP address of the replica PostgreSQL instance"
 }
+
+output "database_name" {
+  value       = google_sql_database.test_db.name
+  description = "Name of the database"
+}
+
+output "username" {
+  value       = google_sql_user.postgres_user.name
+  description = "Username for the database"
+}
+
+output "password" {
+  value       = google_sql_user.postgres_user.password
+  description = "Password for the database"
+  sensitive   = true
+}
