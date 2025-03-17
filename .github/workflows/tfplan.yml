@@ -1,9 +1,14 @@
-name: Terraform Plan
+name: SonarCloud Scan
 
 on:
   push:
     branches:
-      - venkat-cloudathon-terraform-workflow
+      - main
+      #- hello-world  # Scan all branches
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   sonarcloud:
@@ -11,14 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ Checkout the repository with full history
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch full history for branch detection
 
-      # ✅ Set up JDK 17 (if needed)
-      - name: Set up JDK 17
+      - name: Set up JDK 17 (if needed)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -35,55 +36,12 @@ jobs:
           sudo ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
           sonar-scanner --version
 
-      # ✅ Run Sonar Scanner with verbose logging
+      # ✅ Run Sonar Scanner
       - name: SonarCloud Scan
         run: |
           sonar-scanner \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.projectName="Terraform Cloudathon" \
-            -Dsonar.projectVersion="1.0" \
-            -Dsonar.branch.name=venkat-cloudathon-terraform-workflow \
             -Dsonar.sources=. \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.verbose=true
-
-  terraform-plan:
-    name: Terraform Plan
-    runs-on: ubuntu-latest
-    
-    defaults:
-      run:
-        working-directory: ./cloudathon
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Setup GCP Authentication
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-
-      - name: Terraform Init
-        run: terraform init
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Terraform Format
-        run: terraform fmt -check -recursive
-        continue-on-error: false
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
