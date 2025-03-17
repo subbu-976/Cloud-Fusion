@@ -21,10 +21,10 @@ resource "google_sql_database_instance" "postgres_primary" {
 
     # ✅ Enable Automatic Backups
     backup_configuration {
-      enabled                        = true  # Turn on backups
-      start_time                     = "03:00" # Backup window (UTC)
-      location                        = "asia-south2" # Backup location
-      point_in_time_recovery_enabled = true  # Enable PITR
+      enabled                        = true          # Turn on backups
+      start_time                     = "03:00"       # Backup window (UTC)
+      location                       = "asia-south2" # Backup location
+      point_in_time_recovery_enabled = true          # Enable PITR
       # binary_log_enabled             = true  # Required for PITR
     }
   }
